@@ -1,0 +1,7 @@
+
+steps A:
+- 1. prep_point_sample.py : to prepare the lines plots 
+- 2. prepvizdata.ipynb : this to prepare the Raster to the extent of lidar or poly 
+steps B:
+- viz1d.py plot lineplots and scatter-line across landuse 
+- viz2d.py maps with context satelite imagey 
