@@ -6,6 +6,54 @@ from rasterio.mask import mask
 import numpy as np 
 
 
+import rasterio
+import numpy as np
+import geopandas as gpd
+from rasterio.mask import mask
+from pathlib import Path
+
+def crop_raster_by_vector(output_path: str, raster_path: str, vector_path: str):
+    """
+    Recorta um raster com base em um vetor.
+
+    Parâmetros:
+    output_path (str): Caminho do arquivo de saída.
+    raster_path (str): Caminho do raster de entrada.
+    vector_path (str): Caminho do vetor de entrada.
+    """
+    output_path = Path(output_path)
+    if output_path.exists():
+        print(f"Arquivo {output_path} já existe. Pulando processamento.")
+        return
+    
+    # Carregar o vetor e o raster
+    gdf = gpd.read_file(vector_path)
+    with rasterio.open(raster_path) as src:
+        if src.crs is None:
+            print(f"O raster {raster_path} não possui um CRS definido. Atribuindo EPSG:4979.")
+            raster_crs = "EPSG:4979"
+        else:
+            raster_crs = src.crs
+        
+        gdf = gdf.to_crs(raster_crs)  # Converter o CRS do vetor para o do raster
+        nodata_value = src.nodata
+        
+        # Obter envelope do vetor
+        bounding_box = gdf.geometry.unary_union.envelope
+        
+        # Recortar o raster
+        out_image, out_transform = mask(src, [bounding_box], crop=True, all_touched=True, nodata=nodata_value)
+        
+        # Atualizar metadados
+        out_meta = src.meta.copy()
+        out_meta.update({"transform": out_transform, "nodata": nodata_value, "height": out_image.shape[1], "width": out_image.shape[2], "crs": raster_crs})
+        
+    # Salvar o raster recortado
+    with rasterio.open(output_path, 'w', **out_meta) as dst:
+        dst.write(out_image)
+    
+    print(f"Arquivo salvo em: {output_path}")
+
 def clip_raster_percentile(input_path, output_path,lper=2,hper=80):
     output_path = output_path.replace('.tif', f'{lper}_{hper}.tif')
 
